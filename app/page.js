@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Stage3D from '@/components/Stage3D';
+import SketchStage from '@/components/SketchStage';
 import {
   CATALOG, DEFAULT_SELECTION, ZONES, ZONE_META,
   byCategory, byId, isValidSelection, originalSetFor, totalPrice, won,
@@ -33,6 +34,7 @@ export default function MainPage() {
   const [debugState, setDebugState] = useState('ready');
   const [announce, setAnnounce] = useState('');
   const [showBase, setShowBase] = useState(false);
+  const [drawing, setDrawing] = useState(false); // 그림으로 보기 (3D 대신 손그림 맞춰보기)
 
   // 첫 진입: 직전 조합이 있으면 복원, 없으면 원본 세트
   useEffect(() => {
@@ -97,8 +99,16 @@ export default function MainPage() {
     setTimeout(() => setToast(null), 3000);
   };
 
+  const toggleDrawing = () => {
+    if (busy || !selection) return;
+    const next = !drawing;
+    setDrawing(next);
+    setHintOn(false);
+    setAnnounce(next ? '그림으로 보고 있어요' : '3D로 보고 있어요');
+  };
+
   const toggleBase = () => {
-    if (busy) return;
+    if (busy || drawing) return;
     const next = !showBase;
     setShowBase(next);
     saveBase(next);
@@ -109,6 +119,11 @@ export default function MainPage() {
     if (!canComplete) return;
     setStatus('completing');
     setHintOn(false);
+    // 그림으로 보는 중이면 3D로 먼저 돌아온 뒤(페이드 끝나길 기다림) 정면 이동·인사를 시작한다
+    if (drawing) {
+      setDrawing(false);
+      await new Promise((r) => setTimeout(r, 380));
+    }
     const { image } = await stageRef.current.runGreeting();
     saveSelection(selection);
     saveCapture(image);
@@ -122,7 +137,7 @@ export default function MainPage() {
 
   return (
     <div className="theme-glade">
-      <main className="main-root" data-state={shown}>
+      <main className="main-root" data-state={shown} data-view={drawing ? 'sketch' : '3d'}>
         <header className="glade-header">
           <div className="logo">Figu<b>Mix</b></div>
           {debug && (
@@ -151,6 +166,7 @@ export default function MainPage() {
               onInteract={() => setHintOn(false)}
             />
           </div>
+          <SketchStage parts={parts} active={drawing} label={label} />
           <div className="vignette" />
 
           {parts && ZONES.map((z) => {
@@ -206,7 +222,7 @@ export default function MainPage() {
               <button
                 id="base-toggle"
                 aria-pressed={showBase}
-                disabled={busy}
+                disabled={busy || drawing}
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={toggleBase}
               >
@@ -240,11 +256,18 @@ export default function MainPage() {
               </span>
               <span id="total-price" className="num">{won(total)}</span>
             </div>
-            <button
-              id="btn-complete" className="btn btn-primary"
-              disabled={!canComplete}
-              onClick={complete}
-            >선택 완료</button>
+            <div className="summary-actions">
+              <button
+                id="btn-sketch" className="btn btn-secondary"
+                disabled={busy || !selection || (shown !== 'ready' && !drawing)}
+                onClick={toggleDrawing}
+              >{drawing ? '3D로 보기' : '그림으로 보기'}</button>
+              <button
+                id="btn-complete" className="btn btn-primary"
+                disabled={!canComplete}
+                onClick={complete}
+              >선택 완료</button>
+            </div>
           </div>
         </div>
       </main>

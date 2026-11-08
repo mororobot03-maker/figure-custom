@@ -274,7 +274,13 @@ button:disabled { cursor: not-allowed; }
 #summary-note { font-size: 0.8125rem; line-height: 1.3rem; color: var(--on-surface-variant); }
 #summary-note.warn { color: var(--primary); }
 #total-price { font-size: 1.25rem; line-height: 1.75rem; font-weight: 700; }
-#btn-complete { flex: 1; max-width: 320px; border-radius: 9999px; min-height: 52px; }
+.summary-actions { flex: 1; display: flex; justify-content: flex-end; gap: 8px; min-width: 0; }
+#btn-complete { flex: 1; max-width: 320px; border-radius: 9999px; min-height: 52px; white-space: nowrap; }
+#btn-sketch {
+  flex: none; border-radius: 9999px; min-height: 52px; padding: 0 16px;
+  font-size: 0.875rem; white-space: nowrap;
+}
+#btn-sketch:not(:disabled):hover { background: var(--surface-highest); }
 
 /* 상태 오버레이 */
 .stage-overlay {
@@ -492,3 +498,67 @@ button:disabled { cursor: not-allowed; }
 .notfound h1 { margin: 0; font-family: var(--font-serif); font-size: 2rem; line-height: 2.5rem; font-weight: 600; }
 .notfound p { margin: 0; color: var(--on-surface-variant); }
 .notfound a { text-decoration: none; display: inline-flex; align-items: center; }
+
+
+/* ───────── 그림으로 보기 (손그림 맞춰보기) ───────── */
+/* 3D 캔버스 위에 덮이는 레이어. data-on이 켜지면 3D는 페이드아웃, 그림은 페이드인. */
+.sketch-layer {
+  position: absolute; inset: 0; z-index: 0; /* 라벨·화살표(뒤에 오는 형제)가 그림 위에 오도록 */
+  container-type: size;
+  display: flex; align-items: center; justify-content: center;
+  padding: 4% 0 76px;
+  pointer-events: none;
+  opacity: 0; visibility: hidden;
+  transform: scale(0.98);
+  transition: opacity 0.35s ease, transform 0.35s ease, visibility 0s linear 0.35s;
+}
+.sketch-layer[data-on='true'] {
+  opacity: 1; visibility: visible; transform: none;
+  transition: opacity 0.35s ease, transform 0.35s ease, visibility 0s;
+}
+.sketch-sheet {
+  position: relative;
+  /* 세로로 꽉 차되, 화면 폭의 74%를 넘지 않게 (좌우 화살표·라벨과 겹침 줄이기) */
+  width: min(70cqw, calc(100cqh * 448 / 729));
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.45));
+}
+.sketch-part {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: contain; user-select: none; -webkit-user-drag: none;
+}
+/* 그림이 없는 파츠: 점선 칸 (구역 위치는 그림 크기 기준 %) */
+.sketch-ghost {
+  position: absolute; left: 4%; right: 4%;
+  display: flex; align-items: center; justify-content: flex-end; text-align: right; padding: 0 12px; /* 왼쪽은 구역 라벨이 덮는다 */
+  border: 2px dashed var(--outline); border-radius: 16px;
+  background: rgba(22, 53, 47, 0.55);
+  color: var(--on-surface-variant); font-size: 0.8125rem; line-height: 1.2rem; font-weight: 600;
+}
+.sketch-ghost-head { top: 3%; height: 35%; }
+.sketch-ghost-body { top: 34%; height: 36%; }
+.sketch-ghost-legs { top: 62%; height: 28%; }
+
+/* 그림 위에서도 파츠 이름이 읽히게 라벨에 어두운 바탕을 깐다 */
+.main-root[data-view='sketch'] .zone-label {
+  margin: -6px 0 0 -10px; padding: 6px 10px; border-radius: 12px;
+  background: rgba(22, 53, 47, 0.82); backdrop-filter: blur(8px);
+  border: 1px solid var(--outline-variant);
+}
+.main-root[data-view='sketch'] .zone-label::after { display: none; }
+
+/* 3D 쪽 */
+#stage { transition: opacity 0.35s ease; }
+.main-root[data-view='sketch'] #stage { opacity: 0; pointer-events: none; }
+.main-root[data-view='sketch'] #gesture-hint { opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sketch-layer, .sketch-layer[data-on='true'] { transition: none; transform: none; }
+  #stage { transition: none; }
+}
+
+@media (max-width: 380px) {
+  #btn-sketch { padding: 0 12px; font-size: 0.8125rem; }
+  #btn-complete { padding: 0 12px; }
+  .summary-actions { gap: 6px; }
+}
+.sketch-ghost span { max-width: 4.6em; word-break: keep-all; }
